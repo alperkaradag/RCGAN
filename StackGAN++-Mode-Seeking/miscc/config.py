@@ -47,7 +47,7 @@ __C.TRAIN.COEFF = edict()
 __C.TRAIN.COEFF.KL = 2.0
 __C.TRAIN.COEFF.UNCOND_LOSS = 0.0
 __C.TRAIN.COEFF.COLOR_LOSS = 0.0
-__C.TRAIN.COEFF.MS = 1.0
+__C.TRAIN.COEFF.MS_LOSS = 1.0
 
 
 # Modal options
@@ -70,10 +70,11 @@ def _merge_a_into_b(a, b):
     """
     if type(a) is not edict:
         return
-
+    # print("a:{}\nb:{}".format(a,b))
     for k, v in a.items():
         # a must specify keys that are in b
         if not k in b:
+            # print("k: {}\nv:{}\na:{}\nb:{}".format(k, v, a, b))
             raise KeyError('{} is not a valid config key'.format(k))
 
         # the types must match, too

@@ -632,8 +632,12 @@ class condGANTrainer(object):
                 #self.summary_writer.add_scalar('G_loss{:d}'.format(i), errG, count)
 
         # mode-seeking loss
-        lz = torch.mean(torch.abs(fake_imgs2 - fake_imgs1)) / torch.mean(torch.abs(noise2 - noise1))
+        # lz = torch.mean(torch.abs(fake_imgs2 - fake_imgs1)) / torch.mean(torch.abs(noise2 - noise1))
         eps = 1 * 1e-5
+        cos = nn.CosineSimilarity()
+        flat1, flat2 = torch.flatten(fake_imgs1), torch.flatten(fake_imgs2)
+        lz = cos(flat1.reshape((1, len(flat1))), flat2.reshape((1, len(flat2))))
+        # print("fake1: {}\nflat: {}\nlz loss: {}".format(fake_imgs1, torch.flatten(fake_imgs1), lz))
         lz_loss = 1 / (lz + eps) * cfg.TRAIN.COEFF.MS_LOSS
 
 
