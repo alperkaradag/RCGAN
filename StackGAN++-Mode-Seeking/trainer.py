@@ -636,7 +636,10 @@ class condGANTrainer(object):
         eps = 1 * 1e-5
         cos = nn.CosineSimilarity()
         flat1, flat2 = torch.flatten(fake_imgs1), torch.flatten(fake_imgs2)
-        lz = cos(flat1.reshape((1, len(flat1))), flat2.reshape((1, len(flat2))))
+        flat1, flat2 = flat1.reshape((1, len(flat1))), flat2.reshape((1, len(flat2)))
+        nflat1, nflat2 = torch.flatten(noise1), torch.flatten(noise2)
+        nflat1, nflat2 = nflat1.reshape((1, len(nflat1))), nflat2.reshape((1, len(nflat2)))
+        lz = (1 - cos(flat1, flat2)) / (1 - cos(nflat1, nflat2))
         # print("fake1: {}\nflat: {}\nlz loss: {}".format(fake_imgs1, torch.flatten(fake_imgs1), lz))
         lz_loss = 1 / (lz + eps) * cfg.TRAIN.COEFF.MS_LOSS
 

@@ -2,7 +2,7 @@ CONFIG_NAME: '3stages'
 
 DATASET_NAME: 'birds'
 EMBEDDING_TYPE: 'cnn-rnn'
-DATA_DIR: 'E:\\GAN-Datasets\\birds'
+DATA_DIR: 'C:\\Users\\Alper\\PycharmProjects\MSGAN\\datasets\\birds'
 GPU_ID: '0'
 WORKERS: 0
 
