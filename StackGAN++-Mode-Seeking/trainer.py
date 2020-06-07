@@ -12,17 +12,102 @@ import os
 import time
 from PIL import Image, ImageFont, ImageDraw
 from copy import deepcopy
+from scipy import linalg
 
 from miscc.config import cfg
 from miscc.utils import mkdir_p
 
 from tensorboardX import SummaryWriter
 
-from model import G_NET, D_NET64, D_NET128, D_NET256, D_NET512, D_NET1024, INCEPTION_V3
-
-
+from model import G_NET, D_NET64, D_NET128, D_NET256, D_NET512, D_NET1024, INCEPTION_V3, FID_INCEPTION
+from tqdm import tqdm
 
 # ################## Shared functions ###################
+def imread(filename):
+    return np.asarray(Image.open(filename).resize((256, 256)), dtype=np.uint8)[..., :3]
+
+def get_activations(files, model, batch_size=50, img=False):
+    cuda = cfg.CUDA
+    dims = 2048
+
+    if batch_size > len(files):
+        print(('Warning: batch size is bigger than the data size. '
+               'Setting batch size to data size'))
+        batch_size = len(files)
+
+    pred_arr = np.empty((len(files), dims))
+
+    for i in range(0, len(files), batch_size):
+        start = i
+        end = i + batch_size
+        if img:
+            images = np.array(files)
+            # print('images shape:', images.shape)
+        else:
+            images = np.array([imread(str(f)).astype(np.float32)
+                           for f in files[start:end]])
+            # Reshape to (n_images, 3, height, width)
+            images = images.transpose((0, 3, 1, 2))
+
+            images /= 255
+
+        batch = torch.from_numpy(images).type(torch.FloatTensor)
+        if cuda:
+            batch = batch.cuda()
+
+        pred = model(batch)[3]
+        # print("pred shape:", pred.cpu().data.numpy().shape)
+        pred_arr[start:end] = pred.cpu().data.numpy().reshape(pred.size(0), -1)
+
+    return pred_arr
+
+def frechet_distance(mu1, sigma1, mu2, sigma2, eps=1e-6):
+    """Numpy implementation of the Frechet Distance.
+    The Frechet distance between two multivariate Gaussians X_1 ~ N(mu_1, C_1)
+    and X_2 ~ N(mu_2, C_2) is
+            d^2 = ||mu_1 - mu_2||^2 + Tr(C_1 + C_2 - 2*sqrt(C_1*C_2)).
+    """
+
+    mu1 = np.atleast_1d(mu1)
+    mu2 = np.atleast_1d(mu2)
+
+    sigma1 = np.atleast_2d(sigma1)
+    sigma2 = np.atleast_2d(sigma2)
+
+    assert mu1.shape == mu2.shape, \
+        'Training and test mean vectors have different lengths'
+    assert sigma1.shape == sigma2.shape, \
+        'Training and test covariances have different dimensions s1: {}, s2: {}'.format(sigma1.shape, sigma2.shape)
+
+    diff = mu1 - mu2
+
+    # Product might be almost singular
+    covmean, _ = linalg.sqrtm(sigma1.dot(sigma2), disp=False)
+    if not np.isfinite(covmean).all():
+        msg = ('fid calculation produces singular product; '
+               'adding %s to diagonal of cov estimates') % eps
+        print(msg)
+        offset = np.eye(sigma1.shape[0]) * eps
+        covmean = linalg.sqrtm((sigma1 + offset).dot(sigma2 + offset))
+
+    # Numerical error might give slight imaginary component
+    if np.iscomplexobj(covmean):
+        if not np.allclose(np.diagonal(covmean).imag, 0, atol=1e-3):
+            m = np.max(np.abs(covmean.imag))
+            raise ValueError('Imaginary component {}'.format(m))
+        covmean = covmean.real
+
+    tr_covmean = np.trace(covmean)
+
+    return (diff.dot(diff) + np.trace(sigma1) +
+            np.trace(sigma2) - 2 * tr_covmean)
+
+def get_fid_stats(act):
+    # print("actshape", act.shape)
+    mu = np.mean(act, axis=0)
+    sigma = np.cov(act, rowvar=False)
+    return mu, sigma
+
 def compute_mean_covariance(img):
     batch_size = img.size(0)
     channel_num = img.size(1)
@@ -839,8 +924,16 @@ class condGANTrainer(object):
             im.save(fullpath)
 
     def evaluate(self, split_dir):
+        inception_model = INCEPTION_V3()
+        fid_model = FID_INCEPTION()
+        if cfg.CUDA:
+            inception_model.cuda()
+            fid_model.cuda()
+        inception_model.eval()
+        fid_model.eval()
+
         if cfg.TRAIN.NET_G == '':
-            print('Error: the path for morels is not found!')
+            print('Error: the path for models is not found!')
         else:
             # Build and load the generator
             if split_dir == 'test':
@@ -848,7 +941,7 @@ class condGANTrainer(object):
             netG = G_NET()
             netG.apply(weights_init)
             netG = torch.nn.DataParallel(netG, device_ids=self.gpus)
-            print(netG)
+            # print(netG)
             # state_dict = torch.load(cfg.TRAIN.NET_G)
             state_dict = \
                 torch.load(cfg.TRAIN.NET_G,
@@ -863,10 +956,11 @@ class condGANTrainer(object):
             # iteration = int(s_tmp[istart:iend])
             # s_tmp = s_tmp[:s_tmp.rfind('/')]
             # save_dir = '%s/iteration%d' % (s_tmp, iteration)
-            save_dir = 'J:\\qimao\\Text-to-image\\results\\Plugin-v1-210K-random50'
+            # save_dir = 'C:\\Users\\alper\\PycharmProjects\\MSGAN\\StackGAN++-Mode-Seeking\\results'
+            save_dir = "D:\\results"
 
             nz = cfg.GAN.Z_DIM
-            n_samples =50
+            n_samples = 50
             # noise = Variable(torch.FloatTensor(self.batch_size, nz))
             noise = Variable(torch.FloatTensor(n_samples, nz))
             if cfg.CUDA:
@@ -875,7 +969,9 @@ class condGANTrainer(object):
 
             # switch to evaluate mode
             netG.eval()
-            for step, data in enumerate(self.data_loader, 0):
+            for step, data in enumerate(tqdm(self.data_loader)):
+                # if step == 8:
+                #     break
                 imgs, t_embeddings, filenames = data
                 if cfg.CUDA:
                     t_embeddings = Variable(t_embeddings).cuda()
@@ -889,7 +985,14 @@ class condGANTrainer(object):
                 noise.data.normal_(0, 1)
 
                 fake_img_list = []
+                inception_score_list = []
+                fid_list = []
+                score_list = []
+                predictions = []
                 for i in range(embedding_dim):
+                    inception_score_list.append([])
+                    fid_list.append([])
+                    score_list.append([])
                     for j in range(n_samples):
                         noise_j =noise[j].unsqueeze(0)
                         t_embeddings_i = t_embeddings[:, i, :]
@@ -898,6 +1001,14 @@ class condGANTrainer(object):
                         # filenames_new = []
                         # filenames_new.append(filenames[-1]+filenames_number)
                         # filenames_new = tuple(filenames_new)
+
+                        # for selecting reasonable images
+                        pred = inception_model(fake_imgs[-1].detach())
+                        pred = pred.data.cpu().numpy()
+                        predictions.append(pred)
+                        bird_indices = [7, 8, 9, 10, 11, 13, 15, 16, 17, 18, 19, 21, 23, 81, 84, 85, 86, 88, 90, 91, 93, 94, 95, 96, 97, 99, 129, 130, 133, 134, 135, 138, 141, 142, 143, 144, 146, 517]
+                        score = np.max(pred[0, bird_indices])
+                        score_list[i].append((j, score))
 
                         if cfg.TEST.B_EXAMPLE:
                             # fake_img_list.append(fake_imgs[0].data.cpu())
@@ -911,10 +1022,47 @@ class condGANTrainer(object):
                         # self.save_singleimages(fake_imgs[-3], filenames,
                         #                        save_dir, split_dir, i, 64)
                     # break
+                    score_list[i] = sorted(score_list[i], key=lambda x:x[1], reverse=True)[:5]
+                # print(inception_score_list)
+
+                # calculate inception score
+                predictions = np.concatenate(predictions, 0)
+                mean, std = compute_inception_score(predictions, 10)
+                mean_nlpp, std_nlpp = \
+                    negative_log_posterior_probability(predictions, 10)
+                inception_score_list.append((mean, std, mean_nlpp, std_nlpp))
+
+                # for FID score
+                fake_filtered_images = [fake_img_list[i*n_samples + k[0]][0].numpy() for i, j in enumerate(score_list) for k in j]
+                # fake_filtered_images = [fake_img_list[i][0].numpy() for i in range(len(fake_img_list))]
+                img_dir = os.path.join(cfg.DATA_DIR, "CUB_200_2011", "images", filenames[0].split("/")[0])
+                img_files = [os.path.join(img_dir, i) for i in os.listdir(img_dir)]
+
+                act_real = get_activations(img_files, fid_model)
+                mu_real, sigma_real = get_fid_stats(act_real)
+                # print("mu_real: {}, sigma_real: {}".format(mu_real, sigma_real))
+
+                np_imgs = np.array(fake_filtered_images)
+                # print(np_imgs.shape)
+
+                # print(type(np_imgs[0]))
+                act_fake = get_activations(np_imgs, fid_model, img=True)
+                mu_fake, sigma_fake = get_fid_stats(act_fake)
+                # print("mu_fake: {}, sigma_fake: {}".format(mu_fake, sigma_fake))
+
+                fid_score = frechet_distance(mu_real, sigma_real, mu_fake, sigma_fake)
+                fid_list.append(fid_score)
+                stats = 'step: {}, FID: {}, inception_score: {}, nlpp: {}\n'.format(step, fid_score, (mean, std), (mean_nlpp, std_nlpp))
+                with open("results\\stats.txt", "a+") as f:
+                    f.write(stats)
+                # print(stats)
+
                 if cfg.TEST.B_EXAMPLE:
                     # self.save_superimages(fake_img_list, filenames,
                     #                       save_dir, split_dir, 64)
                     # self.save_superimages(fake_img_list, filenames,
                     #                       save_dir, split_dir, 128)
-                    self.save_superimages(fake_img_list, filenames,
+                    images_to_save = [fake_img_list[i * n_samples + k[0]] for i, j in
+                                            enumerate(score_list) for k in j]
+                    self.save_superimages(images_to_save, filenames,
                                           save_dir, split_dir, 256)
