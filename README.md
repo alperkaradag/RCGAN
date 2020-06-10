@@ -32,6 +32,7 @@ cd MSGAN/StackGAN++-Mode-Seeking
 python main.py --cfg cfg/birds_3stages.yml
 ```
 ## Pre-trained Models
+- [our model](https://drive.google.com/file/d/13hN2xKkDp7HZA1wnHYLGUQLSSy7jKg2z/view?usp=sharing)
 - [StackGAN++-Mode-Seeking](https://drive.google.com/open?id=1tnDDolN-OMLG4BUNB6rPIjSXoP2FbXgw)
 - [Inception V3](https://download.pytorch.org/models/inception_v3_google-1a9a5a14.pth)
 - [Inception V3 for FID calculation](http://download.tensorflow.org/models/image/imagenet/inception-2015-12-05.tgz) for more information about FID calculation check out [[Github Page]](https://github.com/mseitzer/pytorch-fid)
