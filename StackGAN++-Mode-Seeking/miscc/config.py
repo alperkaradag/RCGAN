@@ -29,6 +29,7 @@ __C.TREE.BASE_SIZE = 64
 __C.TEST = edict()
 __C.TEST.B_EXAMPLE = True
 __C.TEST.SAMPLE_NUM = 30000
+__C.TEST.FILTER = False
 
 
 # Training options

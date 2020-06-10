@@ -936,12 +936,12 @@ class condGANTrainer(object):
 
     def evaluate(self, split_dir):
         inception_model = INCEPTION_V3()
-        fid_model = FID_INCEPTION()
+        # fid_model = FID_INCEPTION()
         if cfg.CUDA:
             inception_model.cuda()
-            fid_model.cuda()
+        #     fid_model.cuda()
         inception_model.eval()
-        fid_model.eval()
+        # fid_model.eval()
 
         if cfg.TRAIN.NET_G == '':
             print('Error: the path for models is not found!')
@@ -1038,34 +1038,34 @@ class condGANTrainer(object):
                     # break
                     score_list[i] = sorted(score_list[i], key=lambda x:x[1], reverse=True)[:5]
                     # for FID score
-                    ffi = [i[0].numpy() for i in emb_imgs]
-                    # fake_filtered_images = [fake_img_list[i][0].numpy() for i in range(len(fake_img_list))]
+                    # ffi = [i[0].numpy() for i in emb_imgs]
+                    fake_filtered_images = [fake_img_list[i][0].numpy() for i in range(len(fake_img_list))]
                     img_dir = os.path.join(cfg.DATA_DIR, "CUB_200_2011", "images", filenames[0].split("/")[0])
                     img_files = [os.path.join(img_dir, i) for i in os.listdir(img_dir)]
 
-                    act_real = get_activations(img_files, fid_model)
-                    mu_real, sigma_real = get_fid_stats(act_real)
+                    # act_real = get_activations(img_files, fid_model)
+                    # mu_real, sigma_real = get_fid_stats(act_real)
                     # print("mu_real: {}, sigma_real: {}".format(mu_real, sigma_real))
 
-                    np_imgs = np.array(ffi)
+                    np_imgs = np.array(fake_filtered_images)
                     # print(np_imgs.shape)
 
-                    # print(type(np_imgs[0]))
-                    act_fake = get_activations(np_imgs, fid_model, img=True)
-                    mu_fake, sigma_fake = get_fid_stats(act_fake)
-                    fid_score = frechet_distance(mu_real, sigma_real, mu_fake, sigma_fake)
-                    fids.append(fid_score)
+                    # # print(type(np_imgs[0]))
+                    # act_fake = get_activations(np_imgs, fid_model, img=True)
+                    # mu_fake, sigma_fake = get_fid_stats(act_fake)
+                    # fid_score = frechet_distance(mu_real, sigma_real, mu_fake, sigma_fake)
+                    # fids.append(fid_score)
                     # print("mu_fake: {}, sigma_fake: {}".format(mu_fake, sigma_fake))
                 # print(inception_score_list)
 
-                # calculate inception score
-                predictions = np.concatenate(predictions, 0)
-                mean, std = compute_inception_score(predictions, 10)
-                mean_nlpp, std_nlpp = \
-                    negative_log_posterior_probability(predictions, 10)
-                inception_score_list.append((mean, std, mean_nlpp, std_nlpp))
+                # # calculate inception score
+                # predictions = np.concatenate(predictions, 0)
+                # mean, std = compute_inception_score(predictions, 10)
+                # mean_nlpp, std_nlpp = \
+                #     negative_log_posterior_probability(predictions, 10)
+                # inception_score_list.append((mean, std, mean_nlpp, std_nlpp))
 
-                # for FID score
+                # # for FID score
                 # fake_filtered_images = [fake_img_list[i*n_samples + k[0]][0].numpy() for i, j in enumerate(score_list) for k in j]
                 # # fake_filtered_images = [fake_img_list[i][0].numpy() for i in range(len(fake_img_list))]
                 # img_dir = os.path.join(cfg.DATA_DIR, "CUB_200_2011", "images", filenames[0].split("/")[0])
@@ -1084,11 +1084,11 @@ class condGANTrainer(object):
                 # # print("mu_fake: {}, sigma_fake: {}".format(mu_fake, sigma_fake))
                 #
                 # # fid_score = frechet_distance(mu_real, sigma_real, mu_fake, sigma_fake)
-                fid_score = np.mean(fids)
+                # fid_score = np.mean(fids)
                 # fid_list.append(fid_score)
-                stats = 'step: {}, FID: {}, inception_score: {}, nlpp: {}\n'.format(step, fid_score, (mean, std), (mean_nlpp, std_nlpp))
-                with open("results\\stats.txt", "a+") as f:
-                    f.write(stats)
+                # stats = 'step: {}, FID: {}, inception_score: {}, nlpp: {}\n'.format(step, fid_score, (mean, std), (mean_nlpp, std_nlpp))
+                # with open("results\\stats.txt", "a+") as f:
+                #     f.write(stats)
                 # print(stats)
 
                 if cfg.TEST.B_EXAMPLE:
@@ -1096,7 +1096,10 @@ class condGANTrainer(object):
                     #                       save_dir, split_dir, 64)
                     # self.save_superimages(fake_img_list, filenames,
                     #                       save_dir, split_dir, 128)
-                    images_to_save = [fake_img_list[i * n_samples + k[0]] for i, j in
-                                            enumerate(score_list) for k in j]
+                    if cfg.TEST.FILTER:
+                        images_to_save = [fake_img_list[i * n_samples + k[0]] for i, j in
+                                                enumerate(score_list) for k in j]
+                    else:
+                        images_to_save = fake_img_list
                     self.save_superimages(images_to_save, filenames,
                                           save_dir, split_dir, 256)

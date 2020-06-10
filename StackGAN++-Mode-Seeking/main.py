@@ -65,6 +65,7 @@ def parse_args():
     parser.add_argument('--gpu', dest='gpu_id', type=str, default='0')
     parser.add_argument('--data_dir', dest='data_dir', type=str, default='')
     parser.add_argument('--manualSeed', type=int, help='manual seed')
+    parser.add_argument('--filter', type=bool, help='filter super images')
     args = parser.parse_args()
     return args
 
@@ -81,6 +82,8 @@ if __name__ == "__main__":
 
     if args.data_dir != '':
         cfg.DATA_DIR = args.data_dir
+    if args.filter is not None:
+        cfg.TEST.FILTER = args.filter
     print('Using config:')
     pprint.pprint(cfg)
 

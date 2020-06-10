@@ -46,7 +46,7 @@ inception_model = INCEPTION_V3()
 inception_model.cuda()
 inception_model.eval()
 
-G_NET_Path = 'C:\\Users\\alper\\PycharmProjects\\MSGAN\\StackGAN++-Mode-Seeking\\models\\their.pth'
+G_NET_Path = 'C:\\Users\\alper\\PycharmProjects\\MSGAN\\StackGAN++-Mode-Seeking\\models\\ours_new.pth'
 netG = G_NET()
 netG.apply(weights_init)
 torch.cuda.set_device(0)
