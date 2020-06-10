@@ -2,21 +2,22 @@ CONFIG_NAME: '3stages'
 
 DATASET_NAME: 'birds'
 EMBEDDING_TYPE: 'cnn-rnn'
-DATA_DIR: 'E:\\GAN-Datasets\\birds'
+DATA_DIR: 'C:\\Users\\Alper\\PycharmProjects\\MSGAN\\datasets\\birds'
 GPU_ID: '0'
 WORKERS: 1  # 4
+CUDA: True
 
 TREE:
     BRANCH_NUM: 3
 
 
 TEST:
-    B_EXAMPLE: False
+    B_EXAMPLE: True
 
 
 TRAIN:
     FLAG: False
-    NET_G: 'J:\\qimao\\Text-to-image\\StackGAN-v2\\official\\netG_210000.pth'
+    NET_G: 'C:\\Users\\alper\\PycharmProjects\\MSGAN\\StackGAN++-Mode-Seeking\\models\\ours.pth'
     BATCH_SIZE: 1
 
 
