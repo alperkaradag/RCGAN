@@ -1,7 +1,7 @@
 # Regularized Conditional Generative Adversarial Networks for Image Synthesis
 
-Pytorch implementation for our RCGAN. We propose a simple yet effective way to address mode collapse issue. It can be applied to any conditional Generative Adversarial Network on any task to improve the diversity.
-**Note:** We built our work upon [MSGAN](https://github.com/HelenMao/MSGAN) and [StackGAN++](https://github.com/hanzhanggit/StackGAN-v2). Please consider checking them out.
+Pytorch implementation for our RCGAN. We propose a simple yet effective way to address mode collapse issue. It can be applied to any conditional Generative Adversarial Network on any task to improve the diversity.<br>
+**Note:** We built our work upon [MSGAN](https://github.com/HelenMao/MSGAN) and [StackGAN++](https://github.com/hanzhanggit/StackGAN-v2). Please consider checking them out. <br>
 Contact: Alper Karadag (alper.karadag@ug.bilkent.edu.tr), Halil Ibrahim Kuru (ibrahim.kuru@bilkent.edu.tr), and Samet Ozcan (samet.ozcan@ug.bilkent.edu.tr) 
 
 ## Example Results
